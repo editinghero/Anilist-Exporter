@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AniList Export</title>
+<link rel="preconnect" href="https://api.fontshare.com">
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@500,700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --bg-dark:#191213; --bg-surface:#22191a; --bg-surface-elevated:#2c2022;
+    --bg-card:rgba(34,25,26,0.75); --bg-card-hover:rgba(44,32,34,0.85);
+    --color-accent:#f0788a; --accent-subtle:rgba(240,120,138,0.12);
+    --accent-glow:rgba(240,120,138,0.25); --border-active:rgba(240,120,138,0.40);
+    --text-ink:#fff3e0; --text-secondary:#dbc9b5; --text-muted:#968677;
+    --hairline:rgba(255,243,224,0.08);
+    --font-display:'Satoshi','Inter',-apple-system,sans-serif;
+    --font-sans:'Satoshi','Inter',-apple-system,sans-serif;
+    --font-mono:Consolas,ui-monospace,monospace;
+    --radius-sm:8px; --radius-md:14px; --radius-lg:20px; --radius-pill:9999px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:48px 24px; min-height:100vh;
+    background:linear-gradient(180deg, #1d1416 0%, #191213 100%);
+    color:var(--text-ink); font-family:var(--font-sans); line-height:1.5;
+  }
+  .wrap{max-width:640px; margin:0 auto;}
+  .brand{display:flex; align-items:center; gap:14px; margin-bottom:28px;}
+  .kanji{
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    width:44px; height:44px; border-radius:var(--radius-md);
+    background:linear-gradient(135deg, #f0788a 0%, #ff9a9e 100%);
+    box-shadow:0 0 24px 0 var(--accent-glow);
+    font-family:var(--font-display); font-size:1.35rem; font-weight:700; color:#191213;
+  }
+  h1{
+    font-family:var(--font-display); letter-spacing:-0.02em;
+    font-size:1.5rem; font-weight:700; margin:0;
+  }
+  .sub{color:var(--text-muted); font-size:0.9rem; margin-top:2px;}
+  .sub code{
+    font-family:var(--font-mono); color:var(--color-accent); background:var(--accent-subtle);
+    padding:1px 6px; border-radius:5px; font-size:0.85em;
+  }
+  .card{
+    background:var(--bg-card); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+    border:1px solid var(--hairline); border-radius:var(--radius-lg);
+    padding:28px; margin-bottom:20px;
+    box-shadow:0 8px 32px 0 rgba(0,0,0,0.45);
+  }
+  label{
+    font-size:0.8rem; color:var(--text-secondary); font-weight:500;
+    display:block; margin-bottom:8px;
+  }
+  input{
+    width:100%; padding:12px 14px; border-radius:var(--radius-sm);
+    border:1px solid var(--hairline); background:var(--bg-surface);
+    color:var(--text-ink); font-family:var(--font-sans); font-size:0.95rem;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  input:focus{
+    outline:none; border-color:var(--border-active);
+    box-shadow:0 0 0 3px var(--accent-subtle);
+  }
+  button{
+    font-family:var(--font-sans); font-weight:700; font-size:0.85rem;
+    border:none; cursor:pointer; border-radius:var(--radius-pill);
+    padding:10px 18px; transition:filter .15s, transform .1s, background .15s, color .15s;
+    white-space:nowrap;
+  }
+  button:hover{filter:brightness(1.1);}
+  button:active{transform:scale(0.96);}
+  button:disabled{opacity:0.5; cursor:not-allowed; filter:none; transform:none;}
+  button.primary{
+    background:var(--color-accent); color:#191213;
+    box-shadow:0 0 18px rgba(240,120,138,0.3);
+  }
+  button.secondary{
+    background:transparent; border:1px solid var(--hairline); color:var(--text-secondary);
+  }
+  button.secondary:hover{
+    color:var(--text-ink); background:rgba(255,243,224,0.05); border-color:var(--hairline);
+  }
+  .status{color:var(--text-muted); font-size:0.85rem; margin-top:14px; min-height:20px;}
+  .status.err{color:#ff9a97;}
+  .status.ok{color:var(--color-accent);}
+  .stats{display:flex; gap:12px; margin-top:18px; flex-wrap:wrap;}
+  .stat{
+    flex:1 1 140px; background:var(--bg-surface); border:1px solid var(--hairline);
+    border-radius:var(--radius-md); padding:14px 18px;
+  }
+  .stat b{
+    display:block; font-family:var(--font-mono); font-size:1.4rem;
+    font-weight:700; color:var(--text-ink);
+  }
+  .stat span{font-size:0.75rem; color:var(--text-muted);}
+  .group-label{
+    font-size:0.75rem; color:var(--text-muted); margin:22px 0 8px;
+  }
+  .group-label:first-of-type{margin-top:20px;}
+  .actions{display:flex; flex-wrap:wrap; gap:8px;}
+  #downloads{flex-direction:column; align-items:stretch;}
+  .footnote{
+    color:var(--text-muted); font-size:0.8rem; margin-top:20px;
+    padding-top:16px; border-top:1px solid var(--hairline);
+  }
+
+  @media (max-width:480px){
+    body{padding:28px 16px;}
+    .card{padding:20px;}
+    h1{font-size:1.3rem;}
+    button{flex:1 1 auto; justify-content:center;}
+    .stat{flex:1 1 100%;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="kanji">録</div>
+    <div>
+      <h1>AniList Export</h1>
+      <div class="sub">Pulls your anime + manga lists straight from AniList's API. Scores use <code>POINT_10_DECIMAL</code> — no rounding.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <label for="uname">AniList username</label>
+    <input id="uname">
+    <div class="actions" style="margin-top:14px;">
+      <button class="primary" id="runBtn" onclick="run()">Fetch lists</button>
+    </div>
+    <div class="status" id="status"></div>
+
+    <div class="stats" id="stats" style="display:none;">
+      <div class="stat"><b id="animeCount">0</b><span>Anime entries</span></div>
+      <div class="stat"><b id="mangaCount">0</b><span>Manga entries</span></div>
+    </div>
+
+    <div id="downloads" style="display:none;">
+      <div class="group-label">MyAnimeList imports</div>
+      <div class="actions">
+        <button class="primary" onclick="downloadMAL('ANIME')">Download MAL anime.xml</button>
+        <button class="primary" onclick="downloadMAL('MANGA')">Download MAL manga.xml</button>
+      </div>
+
+      <div class="group-label">Raw data</div>
+      <div class="actions">
+        <button class="secondary" onclick="downloadCSV('ANIME')">Anime CSV</button>
+        <button class="secondary" onclick="downloadCSV('MANGA')">Manga CSV</button>
+        <button class="secondary" onclick="downloadCSV('ALL')">Combined CSV</button>
+        <button class="secondary" onclick="downloadJSON()">Raw JSON</button>
+      </div>
+    </div>
+
+    <div class="footnote">MAL XML requires whole-number scores (0–10), so scores are rounded to the nearest integer in the XML only — your CSV/JSON exports above stay decimal.</div>
+  </div>
+</div>
+
+<script>
+const QUERY = `
+query ($username: String, $type: MediaType) {
+  MediaListCollection(userName: $username, type: $type) {
+    lists {
+      entries {
+        status
+        score(format: POINT_10_DECIMAL)
+        progress
+        progressVolumes
+        repeat
+        priority
+        notes
+        startedAt { year month day }
+        completedAt { year month day }
+        media {
+          idMal
+          title { romaji }
+          episodes
+          chapters
+          volumes
+          siteUrl
+        }
+      }
+    }
+  }
+}`;
+
+let dataStore = { ANIME: [], MANGA: [] };
+
+function setStatus(msg, cls){
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status' + (cls ? ' ' + cls : '');
+}
+
+function fmtDate(d){
+  if(!d || !d.year) return '';
+  return [d.year, d.month, d.day].map(x => x ? String(x).padStart(2,'0') : '??').join('-');
+}
+
+async function fetchType(username, type){
+  const res = await fetch('https://graphql.anilist.co', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({ query: QUERY, variables: { username, type } })
+  });
+  if(!res.ok){
+    const body = await res.text();
+    throw new Error(`${type} request failed (${res.status}): ${body.slice(0,200)}`);
+  }
+  const json = await res.json();
+  if(json.errors) throw new Error(json.errors.map(e=>e.message).join('; '));
+  const lists = json.data.MediaListCollection.lists || [];
+  const entries = [];
+  const seenMedia = new Set();
+  for(const list of lists){
+    for(const e of list.entries){
+      const mediaKey = e.media.idMal ?? ('title:' + e.media.title.romaji);
+      if(seenMedia.has(mediaKey)) continue;
+      seenMedia.add(mediaKey);
+      entries.push({
+        type,
+        status: e.status,
+        score: e.score,
+        progress: e.progress,
+        progressVolumes: e.progressVolumes,
+        repeat: e.repeat,
+        priority: e.priority,
+        notes: e.notes || '',
+        startedAt: fmtDate(e.startedAt),
+        completedAt: fmtDate(e.completedAt),
+        title: e.media.title.romaji,
+        episodes: e.media.episodes,
+        chapters: e.media.chapters,
+        volumes: e.media.volumes,
+        idMal: e.media.idMal,
+        siteUrl: e.media.siteUrl
+      });
+    }
+  }
+  return entries;
+}
+
+async function run(){
+  const username = document.getElementById('uname').value.trim();
+  if(!username){ setStatus('Enter a username first.', 'err'); return; }
+  document.getElementById('runBtn').disabled = true;
+  document.getElementById('downloads').style.display = 'none';
+  document.getElementById('stats').style.display = 'none';
+  try{
+    setStatus('Fetching anime list…');
+    dataStore.ANIME = await fetchType(username, 'ANIME');
+    setStatus('Fetching manga list…');
+    dataStore.MANGA = await fetchType(username, 'MANGA');
+    document.getElementById('animeCount').textContent = dataStore.ANIME.length;
+    document.getElementById('mangaCount').textContent = dataStore.MANGA.length;
+    document.getElementById('stats').style.display = 'flex';
+    document.getElementById('downloads').style.display = 'flex';
+    setStatus('Done. Scores are unrounded (decimal).', 'ok');
+  }catch(err){
+    setStatus('Error: ' + err.message + ' — if this says "Failed to fetch", the network here may be blocking graphql.anilist.co; try opening this file directly in a normal browser tab instead of in-app.', 'err');
+  }finally{
+    document.getElementById('runBtn').disabled = false;
+  }
+}
+
+function toCSV(rows){
+  if(!rows.length) return '';
+  const headers = Object.keys(rows[0]);
+  const esc = v => `"${String(v ?? '').replace(/"/g,'""')}"`;
+  const lines = [headers.join(',')];
+  for(const r of rows) lines.push(headers.map(h => esc(r[h])).join(','));
+  return lines.join('\n');
+}
+
+function downloadBlob(content, filename, mime){
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function downloadCSV(which){
+  const uname = document.getElementById('uname').value.trim();
+  let rows;
+  if(which === 'ALL') rows = [...dataStore.ANIME, ...dataStore.MANGA];
+  else rows = dataStore[which];
+  downloadBlob(toCSV(rows), `${uname}-${which.toLowerCase()}.csv`, 'text/csv');
+}
+
+const STATUS_MAP_ANIME = {
+  CURRENT: 'Watching', PLANNING: 'Plan to Watch', COMPLETED: 'Completed',
+  DROPPED: 'Dropped', PAUSED: 'On-Hold', REPEATING: 'Watching'
+};
+const STATUS_MAP_MANGA = {
+  CURRENT: 'Reading', PLANNING: 'Plan to Read', COMPLETED: 'Completed',
+  DROPPED: 'Dropped', PAUSED: 'On-Hold', REPEATING: 'Reading'
+};
+
+function xmlEsc(s){
+  return String(s ?? '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+}
+function cdata(s){ return `<![CDATA[${String(s ?? '').replace(/]]>/g,']]]]><![CDATA[>')}]]>`; }
+
+function buildMAL(which){
+  const uname = xmlEsc(document.getElementById('uname').value.trim());
+  const rows = dataStore[which];
+  const isAnime = which === 'ANIME';
+  const statusMap = isAnime ? STATUS_MAP_ANIME : STATUS_MAP_MANGA;
+  let body = '';
+  for(const r of rows){
+    const score = r.score ? Math.round(r.score) : 0;
+    const fractionalScore = (r.score !== null && r.score !== undefined && r.score !== '')
+      ? String(r.score)
+      : '';
+    const existingNotes = String(r.notes ?? '');
+    const notes = fractionalScore
+      ? (existingNotes.trimStart().startsWith('# Fractional Score:')
+          ? existingNotes
+          : `# Fractional Score: ${fractionalScore}${existingNotes ? '\\n\\n' + existingNotes : ''}`)
+      : existingNotes;
+    const rewatching = r.status === 'REPEATING' ? 1 : 0;
+    if(r.idMal == null) continue;
+    if(isAnime){
+      body += `  <anime>
+    <series_animedb_id>${r.idMal ?? 0}</series_animedb_id>
+    <series_title>${cdata(r.title)}</series_title>
+    <series_episodes>${r.episodes ?? 0}</series_episodes>
+    <my_id>0</my_id>
+    <my_watched_episodes>${r.progress ?? 0}</my_watched_episodes>
+    <my_start_date>${r.startedAt || '0000-00-00'}</my_start_date>
+    <my_finish_date>${r.completedAt || '0000-00-00'}</my_finish_date>
+    <my_score>${score}</my_score>
+    <my_status>${statusMap[r.status] || 'Plan to Watch'}</my_status>
+    <my_rewatching>${rewatching}</my_rewatching>
+    <my_rewatching_ep>${rewatching ? (r.progress ?? 0) : 0}</my_rewatching_ep>
+    <my_comments>${cdata(notes)}</my_comments>
+    <my_tags><![CDATA[]]></my_tags>
+    <update_on_import>1</update_on_import>
+  </anime>
+`;
+    } else {
+      body += `  <manga>
+    <manga_mangadb_id>${r.idMal}</manga_mangadb_id>
+    <manga_title>${cdata(r.title)}</manga_title>
+    <manga_volumes>${r.volumes ?? 0}</manga_volumes>
+    <manga_chapters>${r.chapters ?? 0}</manga_chapters>
+    <my_id></my_id>
+    <my_read_volumes>${r.progressVolumes ?? 0}</my_read_volumes>
+    <my_read_chapters>${r.progress ?? 0}</my_read_chapters>
+    <my_start_date>${r.startedAt || '0000-00-00'}</my_start_date>
+    <my_finish_date>${r.completedAt || '0000-00-00'}</my_finish_date>
+    <my_scanalation_group><![CDATA[]]></my_scanalation_group>
+    <my_score>${score}</my_score>
+    <my_storage></my_storage>
+    <my_status>${statusMap[r.status] || 'Plan to Read'}</my_status>
+    <my_comments>${cdata(notes)}</my_comments>
+    <my_times_read>0</my_times_read>
+    <my_tags><![CDATA[]]></my_tags>
+    <my_reread_value></my_reread_value>
+    <update_on_import>1</update_on_import>
+  </manga>
+`;
+    }
+  }
+  const countTag = isAnime ? 'user_total_anime' : 'user_total_manga';
+  const importableCount = rows.filter(r => r.idMal != null).length;
+  return `<?xml version="1.0" encoding="UTF-8" ?>
+<myanimelist>
+  <myinfo>
+    <user_name>${uname}</user_name>
+    <user_export_type>${isAnime ? 1 : 2}</user_export_type>
+    <${countTag}>${importableCount}</${countTag}>
+  </myinfo>
+${body}</myanimelist>`;
+}
+
+function downloadMAL(which){
+  const uname = document.getElementById('uname').value.trim();
+  const xml = buildMAL(which);
+  downloadBlob(xml, `${uname}-${which.toLowerCase()}.xml`, 'application/xml');
+}
+
+function downloadJSON(){
+  const uname = document.getElementById('uname').value.trim();
+  downloadBlob(JSON.stringify(dataStore, null, 2), `${uname}-anilist-export.json`, 'application/json');
+}
+</script>
+</body>
+</html>
